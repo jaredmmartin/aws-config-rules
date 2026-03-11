@@ -167,7 +167,7 @@ def test_not_applicable_when_deleted_resource(
     event, mock_boto_clients, mock_evaluate_compliance
 ):
     # Create the AWS clients
-    sts_client, config_client = mock_boto_clients
+    config_client = mock_boto_clients
 
     # Create the invocation event
     invoking = json.loads(event["invokingEvent"])
@@ -183,18 +183,6 @@ def test_not_applicable_when_deleted_resource(
 
     # evaluate_compliance should not be called
     mock_evaluate_compliance.assert_not_called()
-
-    # assume_role should be called once
-    sts_client.assume_role.assert_called_once()
-
-    # Set variable for the parameters of the assume_role call
-    args, kwargs = sts_client.assume_role.call_args
-
-    # The RoleArn parameter should match the format of an IAM role ARN
-    assert re.match("^arn\\:aws\\:iam\\:\\:\\d+\\:role/.*", kwargs["RoleArn"])
-
-    # The RoleSessionName parameter should be aws_config
-    assert kwargs["RoleSessionName"] == "aws_config"
 
     # put_evaluations should be called
     config_client.put_evaluations.assert_called_once()
@@ -225,7 +213,7 @@ def test_non_deleted_resource_is_evaluated(
     event, mock_boto_clients, mock_evaluate_compliance
 ):
     # Create the AWS clients
-    sts_client, config_client = mock_boto_clients
+    config_client = mock_boto_clients
 
     # configurationItemStatus is OK by default in the base event fixture
     lambda_handler(event, context=None)
@@ -240,18 +228,6 @@ def test_non_deleted_resource_is_evaluated(
     mock_evaluate_compliance.assert_called_once_with(
         invoking_event=invoking_event, rule_parameters=rule_parameters
     )
-
-    # assume_role should be called once
-    sts_client.assume_role.assert_called_once()
-
-    # Set variable for the parameters of the assume_role call
-    args, kwargs = sts_client.assume_role.call_args
-
-    # The RoleArn parameter should match the format of an IAM role ARN
-    assert re.match("^arn\\:aws\\:iam\\:\\:\\d+\\:role/.*", kwargs["RoleArn"])
-
-    # The RoleSessionName parameter should be aws_config
-    assert kwargs["RoleSessionName"] == "aws_config"
 
     # put_evaluations should be called
     config_client.put_evaluations.assert_called_once()

@@ -9,6 +9,12 @@ import urllib.parse
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 
+# Create a Config client
+config = boto3.client(service_name="config")
+
+# Create a STS client
+sts = boto3.client(service_name="sts")
+
 
 def evaluate_compliance(invoking_event, rule_parameters):
     """
@@ -348,22 +354,8 @@ def lambda_handler(event, context):
         # Log message
         log.info("Compliance decision: " + compliance_decision)
 
-    # Assume a role in the remote AWS account
-    role = f"arn:aws:iam::{invoking_event["configurationItem"]["awsAccountId"]}:role/{rule_parameters["remote_iam_role_name"]}"
-
-    # Create boto client for the STS service
-    sts = boto3.client("sts")
-
-    # Use the STS service to assume the role
-    assumed_role = sts.assume_role(RoleArn=role, RoleSessionName="aws_config")
-
     # Create boto client for the Config service
-    config = boto3.client(
-        aws_access_key_id=assumed_role["Credentials"]["AccessKeyId"],
-        aws_secret_access_key=assumed_role["Credentials"]["SecretAccessKey"],
-        aws_session_token=assumed_role["Credentials"]["SessionToken"],
-        service_name="config",
-    )
+    config = boto3.client(service_name="config")
 
     # Send the evaluation results to AWS Config
     response = config.put_evaluations(
