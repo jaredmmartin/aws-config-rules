@@ -1,5 +1,7 @@
 # aws-config-rules
 
+A collection of AWS Config custom rules with Lambda functions written in Python and Terraform deployment.
+
 ## Contents
 
 ### iam-confused-deputy
