@@ -2,7 +2,7 @@
 
 ## Overview
 
-Custom AWS Config rule to evaluate whether IAM role trust policies implement protections for the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html). The compliance evaluation is changed when an IAM role is changed. The Config rule only applies to IAM roles where the trust policy allows an AWS service principal (e.g. `lambda.amazonaws.com`). If the trust policy allows any other type of principal (e.g. another IAM role), the compliance decision is `NOT_APPLICABLE`. If the trust policies allows an AWS service principal to assume the role, the evaluation will parse the trust policy to determine if each statement contains a condition that implements protection from the confused deputy problem. The condition element must contain at least one of the following keys:
+Custom AWS Config rule to evaluate whether IAM role trust policies implement protections for the [confused deputy problem](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html). The compliance evaluation is triggered when an IAM role is changed. The Config rule only applies to IAM roles where the trust policy allows an AWS service principal (e.g. `lambda.amazonaws.com`). If the trust policy allows any other type of principal (e.g. another IAM role), the compliance decision is `NOT_APPLICABLE`. If the trust policies allows an AWS service principal to assume the role, the evaluation will parse the trust policy to determine if each statement contains a condition that implements protection from the confused deputy problem. The condition element must contain at least one of the following keys:
 
 + `aws:PrincipalAccount`
 + `aws:PrincipalArn`
@@ -54,17 +54,24 @@ The Config rule evaluation is triggered by changes to IAM roles. The compliance 
 To run the unit tests:
 
 ```shell
-# Create virtual env
-python3 -m venv venv
+# Set working directory
+cd "iam-confused-deputy"
 
-# Activate virtual env
+# Create and activate virtual env
+python3 -m venv venv
 source venv/bin/activate
 
+# Install requirements
+pip install boto3 pytest
+
 # Set the working directory
-cd "iam-confused-deputy/files"
+cd "files"
 
 # Run the tests
 python -m pytest -rA
+
+# Exit the virtual env
+deactivate
 ```
 
 ## Deployment
@@ -75,7 +82,6 @@ To deploy the Config rule:
 # Set environment variables, if necessary
 export AWS_ACCESS_KEY_ID=""
 export AWS_SECRET_ACCESS_KEY=""
-export AWS_SESSION_TOKEN=""
 
 # Set the working directory
 cd "iam-confused-deputy"
@@ -93,6 +99,6 @@ Review the Lambda function logs in the CloudWatch log group `/aws/config-iam-con
 
 ## Useful documentation
 
-[Supported Resource Types for AWS Config](https://docs.aws.amazon.com/config/latest/developerguide/resource-config-reference.html)
+[The confused deputy problem | AWS Identity and Access Management](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html).
 
-[SNS - Boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns.html)
+[Supported Resource Types for AWS Config | AWS Config](https://docs.aws.amazon.com/config/latest/developerguide/resource-config-reference.html)

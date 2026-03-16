@@ -25,17 +25,24 @@ The Config rule evaluation is triggered on a recurring schedule. The compliance 
 To run the unit tests:
 
 ```shell
+# Set working directory
+cd "sns-email-subscription-domain"
+
 # Create virtual env
 python3 -m venv venv
-
-# Activate virtual env
 source venv/bin/activate
 
+# Install requirements
+pip install boto3 pytest
+
 # Set the working directory
-cd "sns-email-subscription-domain/files"
+cd "files"
 
 # Run the tests
 python -m pytest -rA
+
+# Exit the virtual env
+deactivate
 ```
 
 ## Deployment
@@ -46,7 +53,6 @@ To deploy the Config rule:
 # Set environment variables, if necessary
 export AWS_ACCESS_KEY_ID=""
 export AWS_SECRET_ACCESS_KEY=""
-export AWS_SESSION_TOKEN=""
 
 # Set the working directory
 cd "sns-email-subscription-domain"
@@ -65,5 +71,3 @@ Review the Lambda function logs in the CloudWatch log group `/aws/config-sns-ema
 ## Useful documentation
 
 [Supported Resource Types for AWS Config](https://docs.aws.amazon.com/config/latest/developerguide/resource-config-reference.html)
-
-[SNS - Boto3 documentation](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sns.html)

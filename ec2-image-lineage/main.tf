@@ -1,8 +1,8 @@
 ############ Local variables ############
 
 locals {
-  description = "Custom AWS Config rule to detect service-linked IAM roles without confused deputy protection."
-  name_prefix = "config-iam-confused-deputy"
+  description = "Custom AWS Config rule to detect compliance of EC2 image lineage to approved owners."
+  name_prefix = "config-ec2-image-lineage"
 }
 
 ############ Data Sources ############
@@ -49,6 +49,19 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
+data "aws_iam_policy_document" "ec2" {
+  statement {
+    actions   = ["ec2:DescribeImages"]
+    effect    = "Allow"
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "this" {
+  name   = "${local.name_prefix}-${random_string.this.id}"
+  policy = data.aws_iam_policy_document.ec2.json
+}
+
 resource "aws_iam_role" "this" {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
   name               = "${local.name_prefix}-${random_string.this.id}"
@@ -59,15 +72,27 @@ resource "aws_iam_role_policy_attachment" "config" {
   policy_arn = data.aws_iam_policy.config.arn
 }
 
+resource "aws_iam_role_policy_attachment" "ec2" {
+  role       = aws_iam_role.this.name
+  policy_arn = aws_iam_policy.this.arn
+}
+
 resource "aws_iam_role_policy_attachment" "lambda" {
   role       = aws_iam_role.this.name
   policy_arn = data.aws_iam_policy.lambda.arn
 }
 
-
 ############ Lambda packaging ############
 
+resource "null_resource" "this" {
+  provisioner "local-exec" {
+    command = "python3 -m pip install --upgrade --target files/ tabulate"
+  }
+}
+
 data "archive_file" "this" {
+  depends_on = [null_resource.this]
+
   output_path = "${path.root}/.terraform/lambda_function.zip"
   source_dir  = "files/"
   type        = "zip"
@@ -103,24 +128,14 @@ resource "aws_cloudwatch_log_group" "this" {
 
 resource "aws_config_config_rule" "this" {
   description = local.description
-  input_parameters = jsonencode(
-    {
-      required_condition_keys = [
-        "aws:PrincipalAccount",
-        "aws:PrincipalArn",
-        "aws:PrincipalOrgID",
-        "aws:PrincipalOrgPaths",
-        "aws:SourceAccount",
-        "aws:SourceArn",
-        "aws:SourceOrgID",
-        "aws:SourceOrgPaths",
-        "aws:ExternalId",
-      ]
-    }
-  )
+  input_parameters = jsonencode({
+    APPROVED_IMAGE_IDS           = ""
+    APPROVED_IMAGE_OWNER_ALIASES = "amazon"
+    APPROVED_IMAGE_OWNER_IDS     = ""
+  })
   name = "${local.name_prefix}-${random_string.this.id}"
   scope {
-    compliance_resource_types = ["AWS::IAM::Role"]
+    compliance_resource_types = ["AWS::EC2::Instance"]
   }
   source {
     owner = "CUSTOM_LAMBDA"

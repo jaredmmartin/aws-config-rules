@@ -78,9 +78,6 @@ def evaluate_compliance(invoking_event, rule_parameters):
         # Log message
         log.info("AWS-managed service roles are not in-scope")
 
-        # Log message
-        log.info(f"Compliance decision: NOT_APPLICABLE")
-
         # Set the compliance evaluation result
         compliance_evaluations.append(
             {
@@ -350,9 +347,6 @@ def lambda_handler(event, context):
             invoking_event=invoking_event,
             rule_parameters=rule_parameters,
         )
-
-        # Log message
-        log.info("Compliance decision: " + compliance_decision)
 
     # Create boto client for the Config service
     config = boto3.client(service_name="config")

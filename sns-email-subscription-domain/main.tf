@@ -1,8 +1,37 @@
+############ Local variables ############
+
+locals {
+  description = "Custom AWS Config rule to detect SNS email subscriptions with unapproved domains."
+  name_prefix = "config-sns-email-subscription-domain"
+}
+
 ############ Data Sources ############
 
 data "aws_caller_identity" "this" {}
 
+data "aws_iam_policy" "config" {
+  name = "AWSConfigRulesExecutionRole"
+}
+
+data "aws_iam_policy" "lambda" {
+  name = "AWSLambdaBasicExecutionRole"
+}
+
+data "aws_iam_policy" "sns" {
+  name = "AmazonSNSReadOnlyAccess"
+}
+
 data "aws_region" "this" {}
+
+############ Naming ############
+
+resource "random_string" "this" {
+  keepers = {
+    name = local.name_prefix
+  }
+  length           = 8
+  special          = false
+}
 
 ############ IAM ############
 
@@ -17,7 +46,6 @@ data "aws_iam_policy_document" "assume_role" {
     condition {
       test     = "StringEquals"
       variable = "aws:SourceAccount"
-
       values = [
         data.aws_caller_identity.this.account_id
       ]
@@ -25,31 +53,19 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-data "aws_iam_policy" "lambda" {
-  name = "AWSLambdaBasicExecutionRole"
-}
-
-data "aws_iam_policy" "config" {
-  name = "AWSConfigRulesExecutionRole"
-}
-
-data "aws_iam_policy" "sns" {
-  name = "AmazonSNSReadOnlyAccess"
-}
-
 resource "aws_iam_role" "this" {
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
-  name               = "config-lambda-iam"
-}
-
-resource "aws_iam_role_policy_attachment" "lambda" {
-  role       = aws_iam_role.this.name
-  policy_arn = data.aws_iam_policy.lambda.arn
+  name               = "${local.name_prefix}-${random_string.this.id}"
 }
 
 resource "aws_iam_role_policy_attachment" "config" {
   role       = aws_iam_role.this.name
   policy_arn = data.aws_iam_policy.config.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda" {
+  role       = aws_iam_role.this.name
+  policy_arn = data.aws_iam_policy.lambda.arn
 }
 
 resource "aws_iam_role_policy_attachment" "sns" {
@@ -65,11 +81,13 @@ data "archive_file" "this" {
   type        = "zip"
 }
 
+############ Lambda ############
+
 resource "aws_lambda_function" "this" {
   architectures    = ["arm64"]
-  description      = "Function for custom AWS Config rule to detect SNS email subscriptions with unapproved domains."
+  description      = local.description
   filename         = data.archive_file.this.output_path
-  function_name    = "config-sns-email-subscription-domain"
+  function_name    = "${local.name_prefix}-${random_string.this.id}"
   handler          = "lambda_function.lambda_handler"
   role             = aws_iam_role.this.arn
   runtime          = "python3.13"
@@ -92,7 +110,7 @@ resource "aws_cloudwatch_log_group" "this" {
 ############ Config ############
 
 resource "aws_config_config_rule" "this" {
-  description = "Custom AWS Config rule to detect SNS email subscriptions with unapproved domains."
+  description = local.description
   input_parameters = jsonencode(
     {
       approved-domains = [
@@ -100,7 +118,7 @@ resource "aws_config_config_rule" "this" {
       ]
     }
   )
-  name = aws_lambda_function.this.function_name
+  name = "${local.name_prefix}-${random_string.this.id}"
   scope {
     compliance_resource_types = ["AWS::SNS::Topic"]
   }
